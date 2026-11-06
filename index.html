@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Генератор Low-Poly Палитры</title>
+  <style>
+    body { background: #1e1e1e; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+    canvas { border: 2px solid #555; image-rendering: pixelated; margin-bottom: 15px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #4caf50; color: white; border: none; border-radius: 4px; }
+    button:hover { background: #45a049; }
+  </style>
+</head>
+<body>
+  <h2>Универсальная Low-Poly Палитра (512x512)</h2>
+  <canvas id="palette" width="512" height="512"></canvas>
+  <button onclick="download()">Скачать palette.png</button>
+
+  <script>
+    const canvas = document.getElementById('palette');
+    const ctx = canvas.getContext('2d');
+    const size = 64; // 8x8 ячеек по 64px = 512x512
+
+    // Сплошные универсальные цвета (Ряды 1-6)
+    const solidColors = [
+      // Ряд 1: Ч/Б, Металлы, Пластик
+      ['#FFFFFF', '#D4D7DC', '#A6ABB4', '#7B818C', '#525760', '#363A42', '#22252A', '#111215'],
+      // Ряд 2: Древесина, Кора, Мебель, Грунт
+      ['#E6C699', '#C89D66', '#B57445', '#8C5230', '#6E3B1E', '#522B18', '#3B2012', '#26150D'],
+      // Ряд 3: Трава, Листва, Хвоя, Мох
+      ['#A8E05F', '#76C442', '#4B9E32', '#2F7A24', '#1E541B', '#3E5926', '#6C7A32', '#8F8738'],
+      // Ряд 4: Кожа персонажа, Песок, Бетон, Штукатурка
+      ['#FFE0C8', '#F2C29B', '#D99B72', '#AD724F', '#D9D2C5', '#B5ACA0', '#8C8479', '#615B53'],
+      // Ряд 5: Одежда, Ткани, Вывески, Вода, Небо
+      ['#70C4E8', '#3B82C4', '#234975', '#192942', '#3D486E', '#634375', '#8A3852', '#A62B2B'],
+      // Ряд 6: Акценты, Огонь, Индикаторы, Кирпич
+      ['#E6392E', '#F06A22', '#F7A428', '#FCE043', '#49C4A7', '#2A7A6C', '#9E5640', '#703529']
+    ];
+
+    // Отрисовка сплошных цветов
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 8; c++) {
+        ctx.fillStyle = solidColors[r][c];
+        ctx.fillRect(c * size, r * size, size, size);
+      }
+    }
+
+    // Ряды 7 и 8: Градиенты ржавчины, коррозии, грязи и износа (Вертикальные растяжки внутри ячеек)
+    const gradients = [
+      // Ряд 7: Металл -> Ржавчина (разные степени и оттенки для заборов, труб, бочек)
+      ['#7B818C', '#8C4320', '#D96226'], // Сталь -> Ржавчина -> Рыжий налёт
+      ['#525760', '#6E2E14', '#B54A1B'], // Тёмный металл -> Глубокая ржавчина
+      ['#A6ABB4', '#7B818C', '#783819'], // Светлая сталь -> Коррозия снизу
+      ['#363A42', '#4F2412', '#8C3B19'], // Чёрный металл -> Окалина
+      ['#8C4320', '#5E240E', '#2B1108'], // Сплошная старая ржавчина (градиент тона)
+      ['#F06A22', '#B54719', '#61210B'], // Яркая свежая ржавчина -> Тёмная
+      ['#4B9E32', '#6E5A28', '#783819'], // Зелёная краска забора -> Облупившаяся ржавчина
+      ['#3B82C4', '#4A4E54', '#783819'], // Синяя краска -> Голый металл -> Ржавчина
+
+      // Ряд 8: Износ дерева, бетона, мох, сырость, копоть
+      ['#B57445', '#6E482B', '#3E4A24'], // Парта/Доска -> Сырость -> Зелёный мох
+      ['#8C5230', '#573B26', '#2B221B'], // Дерево -> Гниль/Чернота у земли
+      ['#C89D66', '#8F8273', '#5C544B'], // Новая доска -> Выцветшая серая доска
+      ['#D9D2C5', '#8C8479', '#4A3F35'], // Бетон/Стена -> Грязные потёки
+      ['#B5ACA0', '#6E6A59', '#3D4F28'], // Камень -> Плесень/Мох у основания
+      ['#A62B2B', '#6E2219', '#2E1410'], // Кирпич -> Копоть/Грязь
+      ['#2F7A24', '#596E24', '#8C6229'], // Зелёная трава -> Сухая жёлтая трава
+      ['#525760', '#332C27', '#14110F']  // Металл -> Мазут/Копоть/Масло
+    ];
+
+    for (let i = 0; i < 16; i++) {
+      const r = 6 + Math.floor(i / 8);
+      const c = i % 8;
+      const x = c * size;
+      const y = r * size;
+
+      const grad = ctx.createLinearGradient(x, y + 4, x, y + size - 4);
+      grad.addColorStop(0, gradients[i][0]);
+      grad.addColorStop(0.5, gradients[i][1]);
+      grad.addColorStop(1, gradients[i][2]);
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, size, size);
+    }
+
+    function download() {
+      const link = document.createElement('a');
+      link.download = 'universal_lowpoly_palette.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>

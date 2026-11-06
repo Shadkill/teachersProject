@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum TopicType {
+  LECTURE 
+  CLASSWORK
+  HOMEWORK
+  LAB
+}
+enum SubmissionStatus{
+  ON_REVIEW
+  REVIEWED
+  REJECTED
+}
+enum Role{
+  STUDENT
+  TEACHER
+  ADMIN
+
+}
+
+model Teacher {
+  id Int     @id @default(autoincrement())
+  email String   @unique
+  role  Role  @default(TEACHER)
+  passwordHash String
+  fullName String
+  otpCode String?
+  otpExpiresAt  DateTime?
+  groups Group[]  @relation("TeachersGroups")
+  courses Course[] @relation("TeacherCourses")
+  createdAt DateTime @default(now())
+}
+model Course{
+  id    Int    @id  @default(autoincrement())
+  name    String 
+  description  String?
+  teachers    Teacher[]   @relation("TeacherCourses")
+  groups     Group[]    @relation("CourseGroups")
+  topics     Topic[]
+  createdAt  DateTime     @default(now())
+}
+
+model Group{
+  id      Int    @id @default(autoincrement())
+  name    String
+  description String?
+  inviteCode String  @unique
+  teachers Teacher[]    @relation("TeachersGroups")
+  courses Course[]      @relation("CourseGroups")
+  students       Student[]
+  submission   Submission[]
+  createdAt DateTime @default(now())
+
+}
+
+model Student{
+  id       Int      @id @default(autoincrement())
+  fullName  String 
+  role  Role  @default(STUDENT)
+  email    String @unique
+  pinCode   String
+  groupId Int?
+  otpCode String?
+  otpExpiresAt  DateTime?
+  group        Group?       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  submissions  Submission[]
+  createdAt    DateTime  @default(now())
+  @@index([groupId])
+}
+
+
+model Topic{
+  id    Int     @id  @default(autoincrement())
+  title  String 
+  description String?
+  type    TopicType @default(HOMEWORK)
+  videoUrls String[] @default([])
+  allowSubmission Boolean
+  deadline DateTime?
+  courseId    Int
+  course      Course          @relation(fields: [courseId],references: [id], onDelete: Cascade)
+  materials   Material[]
+  submissions    Submission[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([courseId])
+}
+
+
+model Material{
+  id         Int    @id @default(autoincrement())
+  originalFileName   String
+  filePath    String
+  fileSize   Int
+  fileExt    String
+  topicId Int
+  topic    Topic      @relation(fields: [topicId],references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([topicId])
+}
+
+
+
+
+model Submission{
+  id           Int      @id  @default(autoincrement())
+  originalFileName   String
+  filePath   String
+  fileSize   Int
+  fileExt    String
+  grade      Int?
+  isLate     Boolean   @default(false)
+
+  status SubmissionStatus  @default(ON_REVIEW)
+  teacherComment String?
+
+  topicId   Int
+  topic     Topic   @relation(fields: [topicId],references: [id], onDelete: Cascade)
+
+  groupId   Int
+  group  Group     @relation(fields: [groupId], references: [id],onDelete: Cascade)
+
+  studentId       Int
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+
+  createdAt   DateTime  @default(now())
+
+
+  @@unique([topicId,studentId])
+  @@index([topicId,groupId])
+
+}
+
+model InviteCode{
+  id      Int    @id @default(autoincrement())
+  code    String  @unique
+  isUsed  Boolean @default(false)
+  usedBy  String?
+  createdAt DateTime @default(now()) 
+}
+model Admin{
+  id    Int    @id  @default(autoincrement())
+  name  String
+  email String    @unique
+  password  String
+  createdAt  DateTime   @default(now())
+  otpCode String?
+  otpExpiresAt  DateTime?
+}
+
