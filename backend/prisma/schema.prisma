@@ -39,6 +39,8 @@ model Teacher {
   passwordHash String
   fullName String
   otpCode String?
+  freeze Boolean @default(false)
+  freezeReason String?
   otpExpiresAt  DateTime?
   groups Group[]  @relation("TeachersGroups")
   courses Course[] @relation("TeacherCourses")
@@ -76,6 +78,8 @@ model Student{
   groupId Int?
   otpCode String?
   otpExpiresAt  DateTime?
+  isBanned   Boolean @default(false)
+  banReason String?
   group        Group?       @relation(fields: [groupId], references: [id], onDelete: Cascade)
   submissions  Submission[]
   createdAt    DateTime  @default(now())
@@ -163,5 +167,6 @@ model Admin{
   createdAt  DateTime   @default(now())
   otpCode String?
   otpExpiresAt  DateTime?
+  role Role  @default(ADMIN)
 }
 

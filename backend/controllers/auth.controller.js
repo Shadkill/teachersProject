@@ -76,6 +76,9 @@ class AuthController {
             if(!findTeacher){
                 return res.status(400).json({message:'Неверный логин или пароль!'})
             }
+            if(findTeacher.freeze){
+                return res.status(400).json({message:`Ваш аккаунт временнно заморожен по причине:${findTeacher.freezeReason}`})
+            }
             const validPass = await bcrypt.compare(password,findTeacher.passwordHash);
             if(!validPass){
                 return res.status(400).json({message:'Неверный логин или пароль!'})
@@ -202,6 +205,9 @@ class AuthController {
             if(!findStudent){
                 return res.status(400).json({message:'Неверный логин или пароль!'})
 
+            }
+            if(findStudent.isBanned){
+                return res.status(400).json({message:`Ваш аккаунт заблокирован по причине:${findStudent.banReason}`});
             }
             const verifyPassword= await bcrypt.compare(pinCode, findStudent.pinCode);
             if(!verifyPassword){

@@ -41,6 +41,7 @@ class Middlewares {
         }
         next();
     }
+
 }
 
 module.exports = new Middlewares();

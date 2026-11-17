@@ -126,12 +126,13 @@ class AdminController{
     }
     async verifyCodeAdmin(req,res,next){
         try {
-            const {verifyCodeAdmin} = req.body;
-            if(!verifyCodeAdmin){
+            const {masterKey} = req.body;
+            if(!masterKey){
                 return res.status(400).json({message:'Введите код!'})
             }
             const code = process.env.SECRET_CODE_ADMIN;
-            if(verifyCodeAdmin!==code){
+            console.log(code)
+            if(masterKey!==code){
                 return res.status(400).json({message:'Неверный код!'})
             }
             const token = jwt.sign({
@@ -181,7 +182,7 @@ class AdminController{
             }
         });
         const htmlFilePath = path.join(__dirname,'../templates/otp.html');
-        let htmlContent = fs.readFile(htmlFilePath,'utf8');
+        let htmlContent = await fs.readFile(htmlFilePath,'utf8');
         htmlContent = htmlContent.replace('{{CODE}}', code);
         const mailOptions ={
             from: process.env.EMAIL,
@@ -204,6 +205,7 @@ class AdminController{
         return res.status(500).json({error:'Ошибка сервера, приносим свои извинения!'})
     }
 }
+
 async verifyAdminToken(req,res,next){
     try {
         const {code,email} =req.body;
@@ -230,7 +232,7 @@ async verifyAdminToken(req,res,next){
                 }
             });
             const token = jwt.sign({
-                id:findAdmin.id, email:findAdmin.email,role,role:findAdmin.role
+                id:findAdmin.id, email:findAdmin.email,role:findAdmin.role
             },process.env.JWT_SECRET,{
                 expiresIn:'1h'
             });
@@ -293,6 +295,296 @@ async getAllStudents(req,res,next){
     }
 }
 
+async banStudents(req,res,next){
+    try {
+        const {id,banReason} =req.body;
+        if(!id||!banReason){
+            return res.status(400).json({message:"Не переданы нужные данные!"})
+        }
+        const students = await prisma.student.findFirst({
+            where:{
+                id:Number(id)
+            },
+            include:{
+                group:{
+                    select:{
+                        name:true
+                    }
+                }
+            }
+        });
+        if(!students){
+            return res.status(404).json({message:"Пользователя с такими данными не существует!"})
+
+        }
+        const studentBan = await prisma.student.update({
+            where:{
+                id:Number(id)
+            },
+            data:{
+                isBanned:true,
+                banReason:banReason
+            }
+        });
+        const htmlFilePath = path.join(__dirname,'../templates/banStudent.html');
+        let htmlContent =await fs.readFile(htmlFilePath,'utf8');
+        htmlContent = htmlContent
+         .replace(/{{STUDENT_NAME}}/g, students.fullName)
+        .replace(/{{BAN_REASON}}/g, banReason)
+        .replace(/{{STUDENT_GROUP}}/g, students.group?.name || 'Нет группы')
+        .replace(/{{BAN_DURATION}}/g, 'Навсегда')
+        .replace(/{{SUPPORT_EMAIL}}/g, process.env.EMAIL_SUPPORT);
+   
+        const mailOptions ={
+            from: `Абит шерпа уведомления: ${process.env.EMAIL}`,
+            to:students.email,
+            subject:'Блокировка аккаунта',
+            html:htmlContent
+        }
+        transporter.sendMail(mailOptions,(error,info)=>{
+            if(error){
+                console.error('Ошибка при отправке письма!');
+                return res.status(500).json({message:'Ошибка отправки письма, приносим свои извинения!'})
+            }
+            console.log('Письмо отправлено');
+                return res.status(200).json({message:"Пользователь успешно заблокирован!"})
+        })
+        
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({message:"Ошибка сервера! Приносим свои извинения!"})
+    }
+}
+
+async unBanStudent(req,res,next){
+    try {
+        const {id} = req.body;
+       if(!id){
+            return res.status(400).json({message:"Не переданы нужные данные!"})
+        }
+        const students = await prisma.student.findFirst({
+            where:{
+                id:Number(id)
+            }, include:{
+                group:{
+                    select:{
+                        name:true
+                    }
+                }
+            }
+        });
+        if(!students){
+            return res.status(404).json({message:"Пользователя с такими данными не существует!"})
+
+        }
+       await prisma.student.update({
+            where:{
+                id:Number(id)
+            },
+            data:{
+                isBanned:false,
+                banReason:''
+            }
+        });
+        const nowFormatted = new Date().toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const htmlFilePath = path.join(__dirname,'../templates/unbanStudent.html');
+        let htmlContent =await fs.readFile(htmlFilePath,'utf8');
+        htmlContent = htmlContent
+       .replace(/{{STUDENT_NAME}}/g, students.fullName)
+        .replace(/{{STUDENT_GROUP}}/g, students.group?.name || 'Нет группы')
+        .replace(/{{UNBAN_DATE}}/g, nowFormatted)
+        .replace(/{{SUPPORT_EMAIL}}/g, process.env.EMAIL_SUPPORT);
+        
+        const mailOptions ={
+            from:`Абит шерпа уведомления: ${process.env.EMAIL}`,
+            to:students.email,
+            subject:'Разблокировка аккаунта',
+            html:htmlContent
+        }
+        transporter.sendMail(mailOptions,(error,info)=>{
+            if(error){
+                console.error('Ошибка при отправке письма!');
+                return res.status(500).json({message:'Ошибка отправки письма, приносим свои извинения!'})
+            }
+            console.log('Письмо отправлено');
+                return res.status(200).json({message:"Пользователь успешно разблокирован!"})
+        })
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({message:"Ошибка сервера! Приносим свои извинения!"})
+    }
+}
+async deleteStudent(req,res,next){
+    try {
+        const {id,deleteReason} = req.body;
+        if(!id){
+            return res.status(400).json({message:"Не переданы нужные данные!"})
+        }
+        const students = await prisma.student.findFirst({
+            where:{
+                id:Number(id)
+            }, include:{
+                group:{
+                    select:{
+                        name:true
+                    }
+                }
+            }
+        });
+        if(!students){
+            return res.status(404).json({message:"Пользователя с такими данными не существует!"})
+
+        }
+       await prisma.student.delete({
+            where:{
+                id:Number(id)
+            }
+        });
+        
+        const htmlFilePath = path.join(__dirname,'../templates/deleteAccountStudent.html');
+        let htmlContent =await fs.readFile(htmlFilePath,'utf8');
+        htmlContent = htmlContent
+        .replace(/{{STUDENT_NAME}}/g, students.fullName)
+        .replace(/{{DELETE_REASON}}/g, deleteReason || 'Решение администрации')
+        .replace(/{{STUDENT_GROUP}}/g, students.group?.name || 'Без группы')
+        .replace(/{{DELETE_DATE}}/g, new Date().toLocaleString('ru-RU'))
+        .replace(/{{SUPPORT_EMAIL}}/g, process.env.EMAIL_SUPPORT );
+        
+        const mailOptions ={
+            from:`Абит шерпа уведомления: ${process.env.EMAIL}`,
+            to:students.email,
+            subject:'Удаления аккаунта',
+            html:htmlContent
+        }
+        transporter.sendMail(mailOptions,(error,info)=>{
+            if(error){
+                console.error('Ошибка при отправке письма!');
+                return res.status(500).json({message:'Ошибка отправки письма, приносим свои извинения!'})
+            }
+            console.log('Письмо отправлено');
+                return res.status(200).json({message:"Пользователь успешно удалён!"})
+        })
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({message:"Ошибка сервера! Приносим свои извинения!"})
+    }
+}
+
+async freezeTeacher(req,res,next){
+    try {
+        const {id,freezeReason} =req.body;
+         if(!id||!freezeReason){
+            return res.status(400).json({message:"Не переданы нужные данные!"})
+        }
+        const teacherFind = await prisma.teacher.findFirst({
+            where:{
+                id:Number(id)
+            }
+        });
+        if(!teacherFind){
+            return res.status(404).json({message:"Пользователя с такими данными не существует!"})
+
+        }
+        await prisma.teacher.update({
+            where:{
+                id:Number(id)
+            },data:{
+                freeze:true,
+                freezeReason: freezeReason
+            }
+        });
+        const htmlFilePath = path.join(__dirname,'../templates/teacherAccountFreeze.html');
+        let htmlContent =await fs.readFile(htmlFilePath,'utf8');
+        htmlContent = htmlContent
+        .replace(/{{TEACHER_NAME}}/g, teacherFind.fullName)
+        .replace(/{{FREEZE_REASON}}/g, freezeReason)
+        .replace(/{{TEACHER_EMAIL}}/g, teacherFind.email)
+        .replace(/{{FREEZE_DURATION}}/g, 'До устранения причин заморозки')
+        .replace(/{{SUPPORT_EMAIL}}/g, process.env.EMAIL_SUPPORT);
+   
+        const mailOptions ={
+            from: `Абит шерпа уведомления: ${process.env.EMAIL}`,
+            to:teacherFind.email,
+            subject:'Заморозка аккаунта',
+            html:htmlContent
+        }
+        transporter.sendMail(mailOptions,(error,info)=>{
+            if(error){
+                console.error('Ошибка при отправке письма!');
+                return res.status(500).json({message:'Ошибка отправки письма, приносим свои извинения!'})
+            }
+            console.log('Письмо отправлено');
+                return res.status(200).json({message:"Пользователь успешно заморожен!"})
+        })
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({message:"Ошибка сервера! Приносим свои извинения!"})
+    }
+}
+async unFreezeTeacher(req,res,next){
+    try {
+        const {id} = req.body;
+
+        if(!id){
+            return res.status(400).json({message:"Не переданы нужные данные!"})
+        }
+        const teacherFind = await prisma.teacher.findFirst({
+            where:{
+                id:Number(id)
+            }
+        });
+        if(!teacherFind){
+            return res.status(404).json({message:"Пользователя с такими данными не существует!"})
+
+        }
+        await prisma.teacher.update({
+            where:{
+                id:Number(id)
+            },data:{
+                freeze:false,
+                freezeeReason:''
+            }
+        });
+        const htmlFilePath = path.join(__dirname,'../templates/unFreezeTeacher.html');
+        let htmlContent =await fs.readFile(htmlFilePath,'utf8');
+        const nowFormatted = new Date().toLocaleString('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+});
+        htmlContent = htmlContent
+        .replace(/{{TEACHER_NAME}}/g, teacherFind.fullName)
+  .replace(/{{TEACHER_EMAIL}}/g, teacherFind.email)
+  .replace(/{{UNFREEZE_DATE}}/g, nowFormatted)
+  .replace(/{{SUPPORT_EMAIL}}/g, process.env.EMAIL_SUPPORT)
+   
+        const mailOptions ={
+            from: `Абит шерпа уведомления: ${process.env.EMAIL}`,
+            to:teacherFind.email,
+            subject:'Заморозка аккаунта',
+            html:htmlContent
+        }
+        transporter.sendMail(mailOptions,(error,info)=>{
+            if(error){
+                console.error('Ошибка при отправке письма!');
+                return res.status(500).json({message:'Ошибка отправки письма, приносим свои извинения!'})
+            }
+            console.log('Письмо отправлено');
+                return res.status(200).json({message:"Пользователь успешно разморожен!"})
+        })
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({message:"Ошибка сервера! Приносим свои извинения!"})
+    }
+}
     
 }
   

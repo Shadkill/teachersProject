@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Уведомление о временной заморозке учётной записи преподавателя</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #171721; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ededf3;">
+  <!-- Внешняя таблица-контейнер для совместимости со всеми почтовыми клиентами -->
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #171721; min-height: 100vh; padding: 40px 16px;">
+    <tr>
+      <td align="center" valign="top">
+        
+        <!-- Основная карточка письма -->
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #1e1e2a; border-radius: 14px; border: 1px solid #70707d; overflow: hidden; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);">
+          
+          <!-- Верхняя акцентная полоса -->
+          <tr>
+            <td style="background-color: #5266eb; height: 4px; line-height: 4px; font-size: 4px;">&nbsp;</td>
+          </tr>
+
+          <!-- Основное содержимое -->
+          <tr>
+            <td style="padding: 36px 32px 28px 32px;">
+              
+              <!-- Шапка с названием платформы и бейджем -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <span style="font-size: 16px; font-weight: 600; color: #ededf3; letter-spacing: 0.02em;">АбитШерпа</span>
+                    <span style="font-size: 11px; text-transform: uppercase; color: #c3c3cc; letter-spacing: 0.05em; margin-left: 8px;">· Академический контур</span>
+                  </td>
+                  <td align="right">
+                    <span style="display: inline-block; background-color: rgba(82, 102, 235, 0.18); border: 1px solid rgba(82, 102, 235, 0.5); color: #a5b4fc; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px;">
+                      Доступ заморожен
+                    </span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Разделитель -->
+              <div style="height: 1px; background-color: rgba(112, 112, 125, 0.25); margin: 20px 0 24px 0;"></div>
+
+              <!-- Заголовок -->
+              <h1 style="font-size: 22px; font-weight: 600; color: #ededf3; margin: 0 0 12px 0; line-height: 1.3;">
+                Учётная запись преподавателя временно заморожена
+              </h1>
+              
+              <p style="font-size: 14px; color: #c3c3cc; line-height: 1.6; margin: 0 0 24px 0;">
+                Уважаемый(ая) <strong style="color: #ededf3;">{{TEACHER_NAME}}</strong>! Информируем вас о том, что доступ к вашей учётной записи преподавателя (<strong style="color: #ededf3;">{{TEACHER_EMAIL}}</strong>) временно приостановлен (заморожен) администрацией образовательной платформы.
+              </p>
+
+              <!-- Блок с параметрами заморозки -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #272735; border: 1px solid rgba(112, 112, 125, 0.35); border-radius: 10px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td valign="top" style="padding-bottom: 12px; width: 155px;">
+                          <span style="font-size: 12px; color: #c3c3cc; text-transform: uppercase; letter-spacing: 0.04em;">Причина заморозки:</span>
+                        </td>
+                        <td valign="top" style="padding-bottom: 12px;">
+                          <span style="font-size: 13px; color: #ededf3; font-weight: 500;">{{FREEZE_REASON}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td valign="top" style="padding-bottom: 12px;">
+                          <span style="font-size: 12px; color: #c3c3cc; text-transform: uppercase; letter-spacing: 0.04em;">Срок действия:</span>
+                        </td>
+                        <td valign="top" style="padding-bottom: 12px;">
+                          <span style="font-size: 13px; color: #a5b4fc; font-weight: 600;">{{FREEZE_DURATION}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td valign="top">
+                          <span style="font-size: 12px; color: #c3c3cc; text-transform: uppercase; letter-spacing: 0.04em;">Сохранность данных:</span>
+                        </td>
+                        <td valign="top">
+                          <span style="font-size: 13px; color: #ededf3;">
+                            Все ваши курсы, лекции, материалы и ведомости студентов полностью сохранены, но вход в кабинет временно заблокирован
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Пояснение по восстановлению -->
+              <h2 style="font-size: 15px; font-weight: 500; color: #ededf3; margin: 0 0 8px 0;">
+                Как восстановить доступ?
+              </h2>
+              <p style="font-size: 13px; color: #c3c3cc; line-height: 1.55; margin: 0 0 24px 0;">
+                По завершении указанного срока либо после согласования с администрацией учётная запись будет разморожена в полном объёме без потери данных.
+              </p>
+
+              <!-- Кнопка связи -->
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td align="center" style="border-radius: 32px; background-color: #5266eb;">
+                    <a href="mailto:{{SUPPORT_EMAIL}}?subject=Запрос%20на%20разморозку%20аккаунта%20{{TEACHER_NAME}}" target="_blank" style="font-size: 13px; font-weight: 500; color: #ffffff; text-decoration: none; padding: 12px 24px; display: inline-block; border-radius: 32px; font-family: sans-serif;">
+                      Связаться с администрацией
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="font-size: 12px; color: #70707d; line-height: 1.45; border-top: 1px solid rgba(112, 112, 125, 0.2); padding-top: 16px;">
+                На период заморозки отправка одноразовых кодов входа (OTP) на данный адрес приостановлена.
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Подвал -->
+          <tr>
+            <td style="background-color: #171721; padding: 18px 32px; border-top: 1px solid rgba(112, 112, 125, 0.2); text-align: center;">
+              <p style="font-size: 11px; color: #70707d; margin: 0; line-height: 1.5;">
+                Это системное уведомление образовательной платформы «АбитШерпа».<br>
+                Пожалуйста, не отвечайте на данное письмо напрямую, используйте контакты администрации.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

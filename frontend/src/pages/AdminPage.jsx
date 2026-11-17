@@ -41,6 +41,7 @@ export default function AdminLoginPage() {
   // Поля ввода
   const [masterKeyInput, setMasterKeyInput] = useState('');
   const [showMasterKey, setShowMasterKey] = useState(false);
+  const [gateToken, setGateToken] = useState(''); // ДОБАВЛЕНО: Состояние для пропуска шлюза
 
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
@@ -109,6 +110,11 @@ export default function AdminLoginPage() {
         masterKey: masterKeyInput.trim()
       });
 
+      // ДОБАВЛЕНО: Сохраняем токен шлюза в состояние
+      if (res.data?.gateToken || res.data?.token) {
+        setGateToken(res.data.gateToken || res.data.token);
+      }
+
       toast.success(res.data?.message || 'Доступ к авторизации открыт!');
       setStage('credentials');
       setMasterKeyInput('');
@@ -138,9 +144,14 @@ export default function AdminLoginPage() {
 
     setLoading(true);
     try {
+      // ИСПРАВЛЕНО: Отправляем запрос с заголовком x-gate-token
       const res = await axios.post(`${API_BASE}/admin/login`, {
         email: adminEmail.trim(),
         password: adminPassword
+      }, {
+        headers: {
+          'x-gate-token': gateToken
+        }
       });
 
       toast.success(res.data?.message || 'Одноразовый код отправлен на почту');
