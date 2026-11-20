@@ -16,7 +16,8 @@ import {
   FileText,
   GraduationCap,
   UserPlus,
-  ExternalLink
+  ExternalLink,
+  Pencil
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -83,8 +84,13 @@ export default function TeacherDashboardPage() {
   const [deletingMaterialId, setDeletingMaterialId] = useState(null);
 
   const [showCourseModal, setShowCourseModal] = useState(false);
+  const [showEditCourseModal, setShowEditCourseModal] = useState(false);
+  const [showDeleteCourseModal, setShowDeleteCourseModal] = useState(false);
+  const [deletingCourse, setDeletingCourse] = useState(false);
+
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showTopicModal, setShowTopicModal] = useState(false);
+  const [showEditTopicModal, setShowEditTopicModal] = useState(false);
   const [showDeleteTopicModal, setShowDeleteTopicModal] = useState(false);
   const [deletingTopic, setDeletingTopic] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -93,6 +99,9 @@ export default function TeacherDashboardPage() {
   // Form states
   const [newCourseName, setNewCourseName] = useState('');
   const [newCourseDesc, setNewCourseDesc] = useState('');
+  const [editCourseName, setEditCourseName] = useState('');
+  const [editCourseDesc, setEditCourseDesc] = useState('');
+
   const [targetGroupId, setTargetGroupId] = useState('');
   const [coTeacherIdInput, setCoTeacherIdInput] = useState('');
 
@@ -103,6 +112,15 @@ export default function TeacherDashboardPage() {
   const [newTopicDeadline, setNewTopicDeadline] = useState('');
   const [videoUrlInput, setVideoUrlInput] = useState('');
   const [newTopicVideoUrls, setNewTopicVideoUrls] = useState([]);
+
+  // Edit Topic Form States
+  const [editTopicTitle, setEditTopicTitle] = useState('');
+  const [editTopicDesc, setEditTopicDesc] = useState('');
+  const [editTopicType, setEditTopicType] = useState('HOMEWORK');
+  const [editTopicAllowSub, setEditTopicAllowSub] = useState(true);
+  const [editTopicDeadline, setEditTopicDeadline] = useState('');
+  const [editVideoUrlInput, setEditVideoUrlInput] = useState('');
+  const [editTopicVideoUrls, setEditTopicVideoUrls] = useState([]);
 
   const [currentSubmission, setCurrentSubmission] = useState(null);
   const [reviewStatus, setReviewStatus] = useState('REVIEWED');
@@ -413,6 +431,86 @@ export default function TeacherDashboardPage() {
     }
   };
 
+  const openEditCourseModal = () => {
+    if (!selectedCourse) return;
+    setEditCourseName(selectedCourse.name || '');
+    setEditCourseDesc(selectedCourse.description || '');
+    setShowEditCourseModal(true);
+  };
+
+  const handleUpdateCourse = async (e) => {
+    e.preventDefault();
+    if (!selectedCourse?.id) return;
+    try {
+      await axios.put(
+        `${API_BASE}/teachers/updateCourse`,
+        {
+          courseId: selectedCourse.id,
+          name: editCourseName.trim(),
+          description: editCourseDesc.trim()
+        },
+        authHeaders
+      );
+      toast.success('Данные курса успешно обновлены!');
+      setShowEditCourseModal(false);
+      fetchCourses();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Ошибка при обновлении курса');
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!selectedCourse?.id) return;
+    setDeletingCourse(true);
+    try {
+      const courseName = selectedCourse.name;
+      await axios.delete(`${API_BASE}/teachers/deleteCourse`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { courseId: selectedCourse.id }
+      });
+      localStorage.removeItem(`abitsherpa_course_groups_${selectedCourse.id}`);
+      localStorage.removeItem(`abitsherpa_course_teachers_${selectedCourse.id}`);
+      toast.success(`Курс «${courseName}» и все его материалы удалены!`);
+      setShowDeleteCourseModal(false);
+      setSelectedCourse(null);
+      setTopics([]);
+      setSelectedTopic(null);
+      fetchCourses();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Ошибка при удалении курса');
+    } finally {
+      setDeletingCourse(false);
+    }
+  };
+
+  const handleUnlinkGroup = async (groupToRemove, e) => {
+    e.stopPropagation();
+    if (!selectedCourse?.id || !groupToRemove?.id) return;
+    try {
+      await axios.put(
+        `${API_BASE}/teachers/unLinkGroup`,
+        { idCourse: selectedCourse.id, idGroup: groupToRemove.id },
+        authHeaders
+      );
+
+      const updatedGroups = courseGroups.filter((g) => Number(g.id) !== Number(groupToRemove.id));
+      saveCachedCourseGroups(selectedCourse.id, updatedGroups);
+      setCourseGroups(updatedGroups);
+      setSelectedCourse((prev) => (prev ? { ...prev, groups: updatedGroups } : prev));
+      setCourses((prev) =>
+        prev.map((c) => (c.id === selectedCourse.id ? { ...c, groups: updatedGroups } : c))
+      );
+
+      if (Number(selectedGroup?.id) === Number(groupToRemove.id)) {
+        setSelectedGroup(updatedGroups.length > 0 ? updatedGroups[0] : null);
+      }
+
+      toast.success(`Группа «${groupToRemove.name}» отвязана от курса`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Не удалось отвязать группу');
+    }
+  };
+
   const handleAddGroup = async (e) => {
     e.preventDefault();
     if (!targetGroupId) {
@@ -551,6 +649,84 @@ export default function TeacherDashboardPage() {
       await loadTopicsAndGroups(selectedCourse);
     } catch (err) {
       toast.error(err.response?.data?.message || err.response?.data?.error || 'Ошибка создания темы');
+    }
+  };
+
+  const openEditTopicModal = () => {
+    if (!selectedTopic) return;
+    setEditTopicTitle(selectedTopic.title || '');
+    setEditTopicDesc(selectedTopic.description || '');
+    setEditTopicType(selectedTopic.type || 'HOMEWORK');
+    setEditTopicAllowSub(Boolean(selectedTopic.allowSubmission));
+    setEditTopicVideoUrls(Array.isArray(selectedTopic.videoUrls) ? selectedTopic.videoUrls : []);
+    setEditVideoUrlInput('');
+
+    if (selectedTopic.deadline) {
+      const d = new Date(selectedTopic.deadline);
+      if (!isNaN(d.getTime())) {
+        // Формат YYYY-MM-DDTHH:mm для input[type="datetime-local"]
+        const pad = (n) => String(n).padStart(2, '0');
+        const localIso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        setEditTopicDeadline(localIso);
+      } else {
+        setEditTopicDeadline('');
+      }
+    } else {
+      setEditTopicDeadline('');
+    }
+
+    setShowEditTopicModal(true);
+  };
+
+  const handleAddEditVideoLink = () => {
+    const trimmed = editVideoUrlInput.trim();
+    if (!trimmed) return;
+    if (editTopicVideoUrls.includes(trimmed)) {
+      toast.error('Эта ссылка уже добавлена');
+      return;
+    }
+    setEditTopicVideoUrls((prev) => [...prev, trimmed]);
+    setEditVideoUrlInput('');
+  };
+
+  const handleUpdateTopic = async (e) => {
+    e.preventDefault();
+    if (!selectedTopic?.id || !selectedCourse?.id) return;
+
+    const finalVideoUrls = [...editTopicVideoUrls];
+    if (editVideoUrlInput.trim() && !finalVideoUrls.includes(editVideoUrlInput.trim())) {
+      finalVideoUrls.push(editVideoUrlInput.trim());
+    }
+
+    let formattedDeadline = null;
+    if (editTopicDeadline) {
+      const parsedDate = new Date(editTopicDeadline);
+      if (!isNaN(parsedDate.getTime())) {
+        formattedDeadline = parsedDate.toISOString();
+      }
+    }
+
+    try {
+      await axios.put(
+        `${API_BASE}/teachers/topicUpdate`,
+        {
+          topicId: Number(selectedTopic.id),
+          courseId: Number(selectedCourse.id),
+          title: editTopicTitle.trim(),
+          description: editTopicDesc.trim() || null,
+          type: editTopicType,
+          videoUrls: finalVideoUrls,
+          allowSubmission: Boolean(editTopicAllowSub),
+          deadline: formattedDeadline
+        },
+        authHeaders
+      );
+
+      toast.success('Тема успешно обновлена!');
+      setShowEditTopicModal(false);
+      await loadTopicsAndGroups(selectedCourse);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Ошибка при обновлении темы');
     }
   };
 
@@ -831,7 +1007,44 @@ export default function TeacherDashboardPage() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
                   <h2 style={{ fontSize: '22px', margin: 0, fontWeight: 500 }}>{selectedCourse.name}</h2>
-                  
+                  <button
+                    type="button"
+                    onClick={openEditCourseModal}
+                    title="Редактировать курс"
+                    style={{
+                      backgroundColor: '#272735',
+                      color: '#ededf3',
+                      border: '1px solid #70707d',
+                      borderRadius: '32px',
+                      padding: '4px 12px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <Pencil size={11} /> Изменить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteCourseModal(true)}
+                    title="Удалить курс"
+                    style={{
+                      backgroundColor: 'rgba(229, 72, 77, 0.14)',
+                      color: '#fca5a5',
+                      border: '1px solid rgba(229, 72, 77, 0.35)',
+                      borderRadius: '32px',
+                      padding: '4px 12px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <Trash2 size={11} /> Удалить курс
+                  </button>
                 </div>
                 <p style={{ fontSize: '13px', color: '#c3c3cc', margin: '0 0 12px 0' }}>
                   {selectedCourse.description || 'Описание дисциплины не заполнено'}
@@ -931,27 +1144,67 @@ export default function TeacherDashboardPage() {
                 ) : (
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                     {courseGroups.map((g) => (
-                      <button
+                      <div
                         key={g.id}
-                        onClick={() => setSelectedGroup(g)}
                         style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
                           backgroundColor: Number(selectedGroup?.id) === Number(g.id) ? '#5266eb' : '#272735',
-                          color: '#fff',
-                          border: 'none',
                           borderRadius: '32px',
-                          padding: '7px 16px',
-                          fontSize: '12px',
-                          cursor: 'pointer'
+                          paddingRight: '8px',
+                          border: Number(selectedGroup?.id) === Number(g.id) ? '1px solid #5266eb' : '1px solid rgba(112, 112, 125, 0.4)'
                         }}
                       >
-                        {g.name}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGroup(g)}
+                          style={{
+                            background: 'none',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '6px 10px 6px 14px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {g.name}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleUnlinkGroup(g, e)}
+                          title={`Отвязать группу ${g.name}`}
+                          style={{
+                            background: 'rgba(23, 23, 33, 0.35)',
+                            color: '#ededf3',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '18px',
+                            height: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
                     ))}
                     <button
+                      type="button"
                       onClick={() => setShowGroupModal(true)}
-                      style={{ backgroundColor: 'transparent', color: '#c3c3cc', border: '1px dashed #70707d', borderRadius: '32px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: '#c3c3cc',
+                        border: '1px dashed #70707d',
+                        borderRadius: '32px',
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
                     >
-                      + Ещё
+                      + Группа
                     </button>
                   </div>
                 )}
@@ -961,19 +1214,16 @@ export default function TeacherDashboardPage() {
                 <span style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '8px' }}>
                   Тема учебного плана:
                 </span>
-                {!Array.isArray(topics) || topics.length === 0 ? (
-                  <div style={{ fontSize: '13px', color: '#c3c3cc', backgroundColor: '#272735', border: '1px solid rgba(112, 112, 125, 0.35)', borderRadius: '32px', padding: '9px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Тем пока нет</span>
-                    <button onClick={() => setShowTopicModal(true)} style={{ background: 'none', border: 'none', color: '#5266eb', cursor: 'pointer', padding: 0, fontSize: '12px' }}>
-                      + Добавить тему
-                    </button>
+                {topics.length === 0 ? (
+                  <div style={{ fontSize: '13px', color: '#c3c3cc', backgroundColor: '#272735', border: '1px solid rgba(112, 112, 125, 0.35)', borderRadius: '32px', padding: '9px 16px' }}>
+                    Темы ещё не добавлены
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <select
                       value={selectedTopic?.id || ''}
                       onChange={(e) => setSelectedTopic(topics.find((t) => t.id === Number(e.target.value)))}
-                      style={{ flex: 1, backgroundColor: '#272735', border: '1px solid #70707d', color: '#ededf3', borderRadius: '32px', padding: '9px 16px', outline: 'none', fontSize: '13px' }}
+                      style={{ flex: 1, minWidth: '180px', backgroundColor: '#272735', border: '1px solid #70707d', color: '#ededf3', borderRadius: '32px', padding: '9px 16px', outline: 'none', fontSize: '13px' }}
                     >
                       {topics.map((t) => (
                         <option key={t.id} value={t.id}>
@@ -982,26 +1232,48 @@ export default function TeacherDashboardPage() {
                       ))}
                     </select>
                     {selectedTopic && (
-                      <button
-                        type="button"
-                        onClick={() => setShowDeleteTopicModal(true)}
-                        title="Удалить выбранную тему"
-                        style={{
-                          backgroundColor: 'rgba(229, 72, 77, 0.14)',
-                          color: '#fca5a5',
-                          border: '1px solid rgba(229, 72, 77, 0.35)',
-                          borderRadius: '32px',
-                          padding: '9px 14px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        <Trash2 size={13} /> Удалить тему
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={openEditTopicModal}
+                          title="Редактировать выбранную тему"
+                          style={{
+                            backgroundColor: '#272735',
+                            color: '#ededf3',
+                            border: '1px solid #70707d',
+                            borderRadius: '32px',
+                            padding: '9px 14px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <Pencil size={13} /> Изменить
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowDeleteTopicModal(true)}
+                          title="Удалить выбранную тему"
+                          style={{
+                            backgroundColor: 'rgba(229, 72, 77, 0.14)',
+                            color: '#fca5a5',
+                            border: '1px solid rgba(229, 72, 77, 0.35)',
+                            borderRadius: '32px',
+                            padding: '9px 14px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <Trash2 size={13} /> Удалить
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -1439,6 +1711,62 @@ export default function TeacherDashboardPage() {
         </div>
       )}
 
+      {showEditCourseModal && selectedCourse && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(23, 23, 33, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
+          <div style={{ backgroundColor: '#1e1e2a', borderRadius: '12px', padding: '28px', maxWidth: '440px', width: '100%', border: '1px solid #70707d' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>Редактировать учебный курс</h3>
+            <form onSubmit={handleUpdateCourse} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '4px' }}>Название дисциплины *</label>
+                <input
+                  type="text"
+                  value={editCourseName}
+                  onChange={(e) => setEditCourseName(e.target.value)}
+                  required
+                  style={{ width: '100%', backgroundColor: '#272735', border: '1px solid #70707d', borderRadius: '32px', color: '#fff', padding: '10px 16px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '4px' }}>Описание курса *</label>
+                <textarea
+                  rows={3}
+                  value={editCourseDesc}
+                  onChange={(e) => setEditCourseDesc(e.target.value)}
+                  required
+                  style={{ width: '100%', backgroundColor: '#272735', border: '1px solid #70707d', borderRadius: '8px', color: '#fff', padding: '10px', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <button type="button" onClick={() => setShowEditCourseModal(false)} style={{ background: 'none', border: 'none', color: '#c3c3cc', cursor: 'pointer' }}>Отмена</button>
+                <button type="submit" style={{ backgroundColor: '#5266eb', color: '#fff', border: 'none', borderRadius: '32px', padding: '9px 18px', cursor: 'pointer' }}>Сохранить изменения</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteCourseModal && selectedCourse && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(23, 23, 33, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
+          <div style={{ backgroundColor: '#1e1e2a', borderRadius: '12px', padding: '28px', maxWidth: '440px', width: '100%', border: '1px solid rgba(229, 72, 77, 0.45)' }}>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#ededf3' }}>Удаление учебного курса</h3>
+            <p style={{ fontSize: '13px', color: '#c3c3cc', lineHeight: 1.5, margin: '0 0 20px 0' }}>
+              Вы действительно хотите безвозвратно удалить курс <strong style={{ color: '#ededf3' }}>«{selectedCourse.name}»</strong>? Все темы, методические файлы и сданные работы студентов по этому курсу будут удалены с сервера.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" onClick={() => setShowDeleteCourseModal(false)} disabled={deletingCourse} style={{ background: 'none', border: 'none', color: '#c3c3cc', cursor: 'pointer' }}>Отмена</button>
+              <button
+                type="button"
+                onClick={handleDeleteCourse}
+                disabled={deletingCourse}
+                style={{ backgroundColor: '#e5484d', color: '#fff', border: 'none', borderRadius: '32px', padding: '9px 18px', cursor: deletingCourse ? 'wait' : 'pointer', fontSize: '13px', fontWeight: 500 }}
+              >
+                {deletingCourse ? 'Удаление...' : 'Удалить курс'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showGroupModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(23, 23, 33, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
           <div style={{ backgroundColor: '#1e1e2a', borderRadius: '12px', padding: '28px', maxWidth: '420px', width: '100%', border: '1px solid #70707d' }}>
@@ -1621,6 +1949,105 @@ export default function TeacherDashboardPage() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
                 <button type="button" onClick={() => setShowTopicModal(false)} style={{ background: 'none', border: 'none', color: '#c3c3cc', cursor: 'pointer' }}>Отмена</button>
                 <button type="submit" style={{ backgroundColor: '#5266eb', color: '#fff', border: 'none', borderRadius: '32px', padding: '9px 18px', cursor: 'pointer' }}>Опубликовать тему</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditTopicModal && selectedTopic && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(23, 23, 33, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
+          <div style={{ backgroundColor: '#1e1e2a', borderRadius: '12px', padding: '28px', maxWidth: '500px', width: '100%', border: '1px solid #70707d', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>Редактировать тему курса</h3>
+            <form onSubmit={handleUpdateTopic} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '4px' }}>Название темы *</label>
+                <input
+                  type="text"
+                  value={editTopicTitle}
+                  onChange={(e) => setEditTopicTitle(e.target.value)}
+                  required
+                  style={{ width: '100%', backgroundColor: '#272735', border: '1px solid #70707d', borderRadius: '32px', color: '#fff', padding: '10px 16px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '4px' }}>Тип занятия *</label>
+                  <select
+                    value={editTopicType}
+                    onChange={(e) => {
+                      setEditTopicType(e.target.value);
+                      setEditTopicAllowSub(e.target.value !== 'LECTURE');
+                    }}
+                    style={{ width: '100%', backgroundColor: '#272735', border: '1px solid #70707d', borderRadius: '32px', color: '#ededf3', padding: '10px 14px', outline: 'none' }}
+                  >
+                    <option value="HOMEWORK">Домашнее задание</option>
+                    <option value="CLASSWORK">Классная работа</option>
+                    <option value="LAB">Лабораторная работа</option>
+                    <option value="LECTURE">Лекция / Материал</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '4px' }}>Приём работ *</label>
+                  <select
+                    value={editTopicAllowSub ? 'yes' : 'no'}
+                    onChange={(e) => setEditTopicAllowSub(e.target.value === 'yes')}
+                    style={{ width: '100%', backgroundColor: '#272735', border: '1px solid #70707d', borderRadius: '32px', color: '#ededf3', padding: '10px 14px', outline: 'none' }}
+                  >
+                    <option value="yes">Разрешить сдачу</option>
+                    <option value="no">Без сдачи работ</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '4px' }}>Методические указания</label>
+                <textarea
+                  rows={3}
+                  value={editTopicDesc}
+                  onChange={(e) => setEditTopicDesc(e.target.value)}
+                  style={{ width: '100%', backgroundColor: '#272735', border: '1px solid #70707d', borderRadius: '8px', color: '#fff', padding: '10px', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '4px' }}>Ссылки на видеоматериалы (videoUrls)</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={editVideoUrlInput}
+                    onChange={(e) => setEditVideoUrlInput(e.target.value)}
+                    style={{ flex: 1, backgroundColor: '#272735', border: '1px solid #70707d', borderRadius: '32px', color: '#fff', padding: '9px 16px', outline: 'none' }}
+                  />
+                  <button type="button" onClick={handleAddEditVideoLink} style={{ backgroundColor: '#272735', color: '#ededf3', border: '1px solid #70707d', borderRadius: '32px', padding: '9px 14px', fontSize: '12px', cursor: 'pointer' }}>+ Добавить</button>
+                </div>
+                {editTopicVideoUrls.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                    {editTopicVideoUrls.map((url, idx) => (
+                      <div key={idx} style={{ backgroundColor: '#272735', borderRadius: '6px', padding: '5px 10px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '340px' }}>{url}</span>
+                        <button type="button" onClick={() => setEditTopicVideoUrls((prev) => prev.filter((u) => u !== url))} style={{ background: 'none', border: 'none', color: '#c3c3cc', cursor: 'pointer' }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', color: '#c3c3cc', display: 'block', marginBottom: '4px' }}>Срок сдачи (Дедлайн)</label>
+                <input
+                  type="datetime-local"
+                  value={editTopicDeadline}
+                  onChange={(e) => setEditTopicDeadline(e.target.value)}
+                  style={{ width: '100%', backgroundColor: '#272735', border: '1px solid #70707d', borderRadius: '32px', color: '#fff', padding: '10px 16px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <button type="button" onClick={() => setShowEditTopicModal(false)} style={{ background: 'none', border: 'none', color: '#c3c3cc', cursor: 'pointer' }}>Отмена</button>
+                <button type="submit" style={{ backgroundColor: '#5266eb', color: '#fff', border: 'none', borderRadius: '32px', padding: '9px 18px', cursor: 'pointer' }}>Сохранить изменения</button>
               </div>
             </form>
           </div>

@@ -22,4 +22,9 @@ router.put('/admin/unBanStudents', protectAdmin,adminController.unBanStudent);
 router.delete('/admin/deleteStudents', protectAdmin,adminController.deleteStudent);
 router.put('/admin/freezeTeacher', protectAdmin, adminController.freezeTeacher);
 router.put('/admin/unFreezeTeacher',protectAdmin,adminController.unFreezeTeacher);
+router.get('/admin/getInviteCode', protectAdmin,adminController.getAllInviteCodes);
+router.delete('/admin/deleteTeacher', protectAdmin, adminController.deleteTeacher);
+router.delete('/admin/deleteGroup', protectAdmin, adminController.deleteGroup);
+router.put('/admin/updateDataGroup', protectAdmin, adminController.updateGroup);
+
 module.exports = router;

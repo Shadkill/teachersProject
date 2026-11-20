@@ -51,7 +51,6 @@ export default function AdminLoginPage() {
 
   const [loading, setLoading] = useState(false);
 
-  // Проверка активного бана в localStorage при монтировании и отсчёт таймера
   useEffect(() => {
     const checkBanStatus = () => {
       const storedBanUntil = localStorage.getItem(BAN_STORAGE_KEY);

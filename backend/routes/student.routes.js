@@ -35,4 +35,5 @@ router.get('/students/getSubmissionsByTopic/:id', studentController.getMySubmiss
 router.delete('/students/deleteSubmissions', studentController.deleteMySubmissions );
 
 router.put('/students/updateProfile', updateController.updateStudentProfile);
+router.put('/students/outGroup',studentController.outGroupStudent);
 module.exports = router;

@@ -15,6 +15,7 @@ import StudentRegisterPage from './pages/StudentRegisterPage';
 import TeacherDashboardPage from './pages/TeacherDashBoardPage';
 import StudentDashboardPage from './pages/StudentDashBoardPage';
 import AdminLoginPage from './pages/AdminPage';
+import AdminDashboardPage from './pages/AdminDashboard';
 // import StudentLoginPage from './pages/StudentLoginPage';
 // import TeacherRegisterPage from './pages/TeacherRegisterPage';
 // import StudentRegisterPage from './pages/StudentRegisterPage';
@@ -45,6 +46,7 @@ export default function App() {
         <Route path='/teacher/dashboard' element={<TeacherDashboardPage/>}/>
         <Route path='/student/dashboard' element={<StudentDashboardPage/>}/>
         <Route path='/admin/login' element={<AdminLoginPage/>}/>
+        <Route path='/admin/dashboard' element={<AdminDashboardPage/>}/>
         {/* Fallback для неизвестных маршрутов */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

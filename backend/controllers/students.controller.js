@@ -192,6 +192,8 @@ class  StudentController{
                 },select:{
                     group:true,
                     submissions:true,
+                    fullName:true,
+                    email:true
                 }
             })
             if(!findUser){
@@ -411,6 +413,37 @@ class  StudentController{
         } catch (error) {
             console.error(error);
             return res.status(500).json({ error: 'Ошибка сервера при получении данных!' });
+        }
+    }
+    async outGroupStudent(req,res,next){
+        try {
+            const userId = req.user.id;
+            const {groupId} = req.body;
+            if(!groupId){
+                return res.status(400).json({message:"Введены не все данные!"})
+            }
+            const student = await prisma.student.findFirst({
+                where:{
+                    id:Number(userId),
+                    groupId: Number(groupId)
+                }
+            });
+            if(!student){
+                return res.status(404).json({message:"Данный студент не найден!"})
+            }
+            await prisma.student.update({
+                where:{
+                    id: Number(userId),
+                    
+                },
+                data: {
+                groupId: null
+    }
+            })
+            return res.status(200).json({message:"Вы успешно вышли из группы!"})
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Ошибка сервера приносим свои извинения!' });
         }
     }
 }

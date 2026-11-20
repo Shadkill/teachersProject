@@ -1,6 +1,8 @@
 const prisma = require('../config/prisma');
-const fs = require('fs');
+
 const path = require('path');
+const fs = require('fs');
+  const fsPromises = require('fs/promises');
 class TeacherController{
     async getGroupMany(req,res,next){
         try {
@@ -546,6 +548,250 @@ class TeacherController{
         return res.status(500).json({message:"Ошибка сервера приносим свои извинения!"})
     }
    }
+   async updateCourse(req,res,next){
+    try {
+        const {courseId,name,description} = req.body;
+        const id = req.user.id;
+        if(!courseId||!name||!description){
+            return res.status(400).json({message:"Не переданы нужные данные!"})
+        }
+        const findCourse = await prisma.course.findFirst({
+            where:{
+                id:Number(courseId),
+                teachers:{
+                    some:{
+                        id: Number(id)
+                    }
+                }
+            }
+        })
+        if(!findCourse){
+             return res.status(400).json({message:"Курс не найден или у вас нет доступа!"})
+        }
+        const update = await prisma.course.update({
+            where:{
+                id:Number(courseId)
+            },
+            data:{
+                name,
+                description
+            }
+        }) 
+        return res.status(200).json({message:'Курс успешно обновлён!'})
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({message:"Ошибка сервера приносим свои извинения!"})
+    }
+   }
+   async deleteCourse(req,res,next){
+    try {
+        const {courseId} = req.body;
+        const id = req.user.id;
+        if(!courseId){
+            return res.status(400).json({message:"Не переданы нужные данные!"})
+        }
+        const findCourse = await prisma.course.findFirst({
+            where:{
+                id:Number(courseId),
+                teachers:{
+                    some:{
+                        id: Number(id)
+                    }
+                }
+            },include:{
+                topics:{
+                    include:{
+                        materials:true,
+                        submissions:true
+                    }
+                }
+            }
+        })
+        if(!findCourse){
+             return res.status(400).json({message:"Курс не найден или у вас нет доступа!"})
+        }
+        for(const topic of findCourse.topics){
+            for(const mat of topic.materials){
+                await fsPromises.unlink(path.join(__dirname,'..', mat.filePath)).catch(()=>{})
+            }
+        }
+
+        for(const topic of findCourse.topics){
+            for(const sub of topic.submissions){
+                await fsPromises.unlink(path.join(__dirname,'..', sub.filePath)).catch(()=>{})
+            }
+        }
+        await prisma.course.delete({
+            where:{
+                id:Number(courseId)
+            }
+        }) 
+        return res.status(200).json({message:'Курс успешно удалён!'})
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({message:"Ошибка сервера приносим свои извинения!"})
+    }
+    }
+    async unLinkGroup(req,res,next){
+        try {
+            const {idGroup, idCourse} = req.body;
+            const id = req.user.id;
+            if(!idGroup||!idCourse){
+                return res.status(400).json({message:"Не переданы нужные данные!"})
+            }
+            const findCourse = await prisma.course.findFirst({
+            where:{
+                id:Number(idCourse),
+                teachers:{
+                    some:{
+                        id: Number(id)
+                    }
+                }
+            }
+        })
+        if(!findCourse){
+             return res.status(400).json({message:"Курс не найден или у вас нет доступа!"})
+        }
+        const findGroup = await prisma.group.findFirst({
+            where:{
+                id:Number(idGroup)
+            }
+        })
+        if(!findGroup){
+             return res.status(400).json({message:"Группа не найдена!"})
+        }
+        await prisma.course.update({
+            where:{
+                id:Number(idCourse)
+            },
+            data:{
+                groups:{
+                    disconnect:{id:Number(idGroup)}
+                }
+            }
+        })
+        return res.status(200).json({message:'Группа успешно отвязана!'})
+        } catch (error) {
+            console.error(error);
+        return res.status(500).json({message:"Ошибка сервера приносим свои извинения!"})
+        }
+    }
+    async topicUpdate(req,res,next){
+        try {
+            const {topicId,title,description,type,videoUrls,allowSubmission, deadline,courseId} = req.body;
+            const teacherId = req.user.id;
+            if(!title || !courseId || allowSubmission === undefined ||!topicId||!type){
+            return res.status(400).json({message:"Заполните все поля!"})
+            }
+            const findTopic = await prisma.topic.findFirst({
+                where:{
+                    id: Number(topicId),
+                    course:{
+                        teachers:{
+                            some: {id:Number(teacherId)}
+                        }
+                    }
+                },
+                
+            })
+            if(!findTopic){
+                return res.status(400).json({message:"Тема не найдена или у вас нет доступа к этому курсу!"})
+            }
+            let validVideoUrls = [];
+            if(videoUrls){
+                if(!Array.isArray(videoUrls)){
+                    return res.status(400).json({message:'Формат видео не массив!'})
+                }
+                validVideoUrls = videoUrls;
+            }
+            const courseCheck = await prisma.course.findFirst({
+                where:{
+                    id:Number(courseId),
+                    teachers:{
+                        some:{
+                            id:Number(teacherId)
+                        }
+                    }
+                }
+            });
+            if(!courseCheck){
+                return res.status(400).json({message:"Курс не найден или у вас нет доступа к этому курсу!"})
+            }
+            const obj =['LECTURE', 'CLASSWORK', 'HOMEWORK', 'LAB']
+            if(!obj.includes(type)){
+                return res.status(400).json({message:'Неверный тип темы!'})
+            }
+            const topicUpdate = await prisma.topic.update({
+                where:{
+                    id:Number(topicId)
+                },
+                data:{
+                     title,
+                    description,
+                    type:type,
+                    videoUrls: validVideoUrls,
+                    allowSubmission:Boolean(allowSubmission),
+                    deadline:deadline?new Date(deadline): null,
+                    courseId:Number(courseId)
+                }
+            })
+            return res.status(200).json({message:"Тема успешно обновлена!"})
+        } catch (error) {
+             console.error(error);
+        return res.status(500).json({message:"Ошибка сервера приносим свои извинения!"})
+        }
+    }
+    async getStudentsByGroup(req,res,next){
+        try {
+            const userId = Number(req.user.id);
+            const groupId = Number(req.params.id);
+            if(!groupId||isNaN(groupId)){
+                return res.status(400).json({ message: 'Переданы не корректные данные!' });
+            }
+            const group = await prisma.group.findFirst({
+                where:{
+                    id:groupId,
+                    courses:{
+                        some:{
+                            teachers:{
+                                some:{id:userId}
+                            }
+                        }
+                    }
+                },select:{
+                    id:true,
+                    name:true,
+                    students:{
+                        where:{
+                            isBanned:false
+                        },
+                        select:{
+                            id:true,
+                            fullName:true,
+                            email:true
+                        },
+                        orderBy:{
+                            fullName:'asc'
+                        }
+                    }
+                }
+            })
+            if(!group){
+                return res.status(403).json({ message: 'Группа не найдена или у вас нет доступа к её списку студентов!' });
+            }
+            return res.status(200).json({
+                groupId: group.id,
+                groupName: group.name,
+                students: group.students
+            });
+        } catch (error) {
+            console.error(error);
+        return res.status(500).json({message:"Ошибка сервера приносим свои извинения!"})
+        }
+    }
+   
 }
+
+
 
 module.exports = new TeacherController();

@@ -48,7 +48,7 @@ class UserController {
                 html: htmlContent
             };
 
-           await transporter.sendMail(mailOptions, (error, info) => {
+                 transporter.sendMail(mailOptions, (error, info) => {
                 if (error) {
                     console.error('Ошибка при отправке письма', error);
                     return res.status(500).json({ message: 'Ошибка отправки письма, приносим свои извинения!' });
@@ -147,7 +147,7 @@ class UserController {
             const id = req.user?.id;
 
             
-            if (!fullName || !email) {
+            if (!fullName) {
                 return res.status(400).json({ message: 'Заполните обязательные поля!' });
             }
 
@@ -158,7 +158,7 @@ class UserController {
             }
 
             
-            if (currentStudent.email !== email) {
+            if (email && currentStudent.email !== email) {
                 const emailUsedByStudent = await prisma.student.findUnique({ where: { email } });
                 const emailUsedByTeacher = await prisma.teacher.findUnique({ where: { email } });
 
@@ -166,9 +166,11 @@ class UserController {
                     return res.status(400).json({ message: 'Этот email уже занят другим пользователем!' });
                 }
             }
-
+            const updateData = { fullName}
+            if(email){
+            updateData.email = email;
+            }
             
-            const updateData = { fullName, email };
             if (pinCode) {
                 updateData.pinCode = await bcrypt.hash(pinCode, 10);
             }

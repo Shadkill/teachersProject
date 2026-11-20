@@ -32,4 +32,9 @@ router.get('/teachers/submissionsDownload/:id',teacherController.downloadSubmiss
 router.put('/teachers/reviewSubmission', teacherController.reviewSubmissions)
 router.get('/teachers/groups', teacherController.getGroupMany);
 router.get('/teachers/getAllTeachers', teacherController.getAllTeachers);
+router.put('/teachers/updateCourse', teacherController.updateCourse);
+router.delete('/teachers/deleteCourse', teacherController.deleteCourse);
+router.put('/teachers/unLinkGroup', teacherController.unLinkGroup);
+router.put('/teachers/topicUpdate', teacherController.topicUpdate);
+router.get('/teachers/groups/:id/students',teacherController.getStudentsByGroup);
 module.exports = router;
